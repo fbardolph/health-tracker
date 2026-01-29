@@ -1,32 +1,76 @@
 # Project Overview
 This project is a personal health tracking web app. It replaces my Airtable instance.
-The app should track the fields in the .csv file in the /Data folder (and should load the existing values I pulled from AirTable) as I input them whenever I weigh myself, or get results back from lipid panels, etc.
+The app tracks health metrics (weight, waist, blood pressure, lipid panels, etc.) as I input them whenever I weigh myself or get results back from lab tests.
 
-# Tech Preferences
-I want a simple web app that works on my iPhone:
-- Mobile-first design
-- Simple forms to enter values or to add new fields or remove fields I no longer want
-- A summary dashboard with charts
-- Lightweight hosting (Netlify, GitHub Pages, or local)
-
-# UI/UX Preferences
-- Dashboard should not have a header title - keep it clean
-- "Most Recent Stats" title above the quick stats cards (Weight, Waist, BP)
-- Charts should show year in x-axis labels (e.g., "Jan 15, '25") for clarity across year boundaries
-- Charts should support horizontal scrolling/panning to view historical data
-- Weight & Waist Trend chart: dual y-axis with Weight (lbs) on left, Waist (inches) on right
-- Two-finger drag to pan charts on mobile
-
-# Data Storage
-- Uses browser LocalStorage (data is device-specific, not synced)
-- Primary usage is on iPhone
-- Export CSV regularly for backup
+# Tech Stack
+- Vanilla HTML/CSS/JS (no framework)
+- Chart.js for visualizations
+- Hammer.js + chartjs-plugin-zoom for touch pan/zoom on charts
+- LocalStorage for data persistence
+- GitHub Pages for hosting
 
 # Hosting
-- Hosted on GitHub Pages: https://fbardolph.github.io/health-tracker
+- URL: https://fbardolph.github.io/health-tracker
 - Repo: https://github.com/fbardolph/health-tracker
+- Uses cache-busting query params on CSS/JS files (?v=N) - increment on each deploy
 
-# Tasks for Claude
-- Generate the data model
-- Build HTML/CSS/JS pages OR a framework-based variant (your choice)
-- Create forms and a simple local-store or file-based backend for now
+# Data Storage
+- Uses browser LocalStorage (data is device-specific, not synced between devices)
+- Primary usage is on iPhone via home screen icon
+- Export CSV regularly for backup
+- To transfer data between devices: export CSV from one, import on the other
+
+# UI/UX Preferences
+- Mobile-first design optimized for iPhone
+- Clean, minimal aesthetic - no 3D or heavy rendered icons
+- SVG icons should be simple line-based, consistent stroke width
+- Dashboard should not have a header title - keep it clean
+- "Most Recent Stats" title above the quick stats cards
+
+# Navigation
+Four bottom nav items with simple SVG icons:
+1. Dashboard (grid icon) - quick stats + charts
+2. Add (plus icon) - entry form
+3. Data (horizontal lines icon) - full data table with horizontal scroll
+4. Settings (gear icon) - import/export, field toggles
+
+# Charts
+- Dashboard shows preview charts (last 90 entries for weight)
+- Tap chart to open fullscreen view with:
+  - Full historical data
+  - Pan (1-finger drag) and pinch-to-zoom
+  - Reset button to restore default view
+- X-axis labels include year (e.g., "Jan 15, '25") for clarity across year boundaries
+- Weight & Waist chart: dual y-axis (Weight lbs on left, Waist inches on right)
+
+# Target Lines (fullscreen charts only)
+- Weight target: 175 lbs (green dashed line)
+- Lipid targets:
+  - Total Cholesterol: < 200 mg/dL (desirable)
+  - LDL: < 100 mg/dL (optimal)
+  - HDL: > 60 mg/dL (protective - higher is better)
+
+# iOS Home Screen App Notes
+- When added to home screen, iOS caches aggressively
+- To get code updates: close app completely (swipe away in app switcher) and reopen
+- Data persists in LocalStorage even when code updates
+- If major cache issues: export CSV, delete icon, re-add to home screen, import CSV
+
+# Data Fields
+- Date (required)
+- Weight (lbs)
+- Waist Circumference (inches)
+- Blood Pressure (systolic/diastolic)
+- Total Cholesterol (mg/dL)
+- HDL (mg/dL)
+- LDL (mg/dL)
+- Non-HDL (mg/dL)
+- Triglycerides (mg/dL)
+- BMI (manual entry)
+- ApoB (mg/dL)
+
+# Development Notes
+- Hammer.js is required for touch gestures in chartjs-plugin-zoom
+- Touch pan/zoom only works reliably in fullscreen chart view (not dashboard)
+- Cache-busting: increment ?v=N in index.html when deploying changes
+- Test on actual iPhone - touch behavior differs from desktop

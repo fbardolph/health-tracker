@@ -91,6 +91,8 @@ function showView(viewName) {
         renderDashboard();
     } else if (viewName === 'entry') {
         resetEntryForm();
+    } else if (viewName === 'data') {
+        renderDataTable();
     } else if (viewName === 'settings') {
         updateEntryCount();
     }
@@ -665,6 +667,32 @@ function showToast(message) {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 2000);
+}
+
+// Data Table
+function renderDataTable() {
+    const tbody = document.getElementById('data-table-body');
+    const countEl = document.getElementById('data-count');
+
+    const sorted = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    countEl.textContent = `${sorted.length} entries`;
+
+    tbody.innerHTML = sorted.map(entry => `
+        <tr onclick="editEntry(${entry.id})">
+            <td>${formatDateShort(entry.date)}</td>
+            <td>${entry.weight || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.waist || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.bp || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.totalChol || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.hdl || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.ldl || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.nonHdl || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.triglycerides || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.bmi || '<span class="empty-cell">-</span>'}</td>
+            <td>${entry.apoB || '<span class="empty-cell">-</span>'}</td>
+        </tr>
+    `).join('');
 }
 
 // Fullscreen Chart
