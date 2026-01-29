@@ -24,6 +24,8 @@ let settings = {
 };
 let weightChart = null;
 let lipidChart = null;
+let fullscreenChart = null;
+let currentFullscreenType = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -118,18 +120,17 @@ function renderWeightChart() {
         return;
     }
 
-    // Show last 90 entries initially, but allow scrolling to see all
-    const initialVisibleCount = Math.min(90, allEntries.length);
-    const minIndex = Math.max(0, allEntries.length - initialVisibleCount);
+    // Show last 90 entries on dashboard
+    const recentEntries = allEntries.slice(-90);
 
     weightChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: allEntries.map(e => formatDateWithYear(e.date)),
+            labels: recentEntries.map(e => formatDateWithYear(e.date)),
             datasets: [
                 {
                     label: 'Weight (lbs)',
-                    data: allEntries.map(e => e.weight || null),
+                    data: recentEntries.map(e => e.weight || null),
                     borderColor: '#007AFF',
                     backgroundColor: 'rgba(0, 122, 255, 0.1)',
                     fill: true,
@@ -140,7 +141,7 @@ function renderWeightChart() {
                 },
                 {
                     label: 'Waist (in)',
-                    data: allEntries.map(e => e.waist || null),
+                    data: recentEntries.map(e => e.waist || null),
                     borderColor: '#FF9500',
                     backgroundColor: 'transparent',
                     borderDash: [5, 5],
@@ -159,26 +160,11 @@ function renderWeightChart() {
                     display: true,
                     position: 'bottom',
                     labels: { boxWidth: 12, font: { size: 10 } }
-                },
-                zoom: {
-                    pan: {
-                        enabled: true,
-                        mode: 'x',
-                        modifierKey: null,
-                        onPanStart: function({chart, point}) {
-                            return true;
-                        }
-                    },
-                    limits: {
-                        x: { min: 0, max: allEntries.length - 1 }
-                    }
                 }
             },
             scales: {
                 x: {
                     display: true,
-                    min: minIndex,
-                    max: allEntries.length - 1,
                     ticks: {
                         maxTicksLimit: 6,
                         font: { size: 10 }
@@ -269,15 +255,6 @@ function renderLipidChart() {
                     display: true,
                     position: 'bottom',
                     labels: { boxWidth: 12, font: { size: 10 } }
-                },
-                zoom: {
-                    pan: {
-                        enabled: true,
-                        mode: 'x'
-                    },
-                    limits: {
-                        x: { min: 0, max: lipidEntries.length - 1 }
-                    }
                 }
             },
             scales: {
@@ -677,6 +654,250 @@ function showToast(message) {
     }, 2000);
 }
 
+// Fullscreen Chart
+function openChartFullscreen(chartType) {
+    currentFullscreenType = chartType;
+    const modal = document.getElementById('chart-fullscreen');
+    const title = document.getElementById('fullscreen-title');
+
+    if (chartType === 'weight') {
+        title.textContent = 'Weight & Waist Trend';
+    } else {
+        title.textContent = 'Lipid Panel';
+    }
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    // Small delay to ensure modal is visible before rendering chart
+    setTimeout(() => {
+        renderFullscreenChart(chartType);
+    }, 50);
+}
+
+function closeChartFullscreen() {
+    const modal = document.getElementById('chart-fullscreen');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+
+    if (fullscreenChart) {
+        fullscreenChart.destroy();
+        fullscreenChart = null;
+    }
+    currentFullscreenType = null;
+}
+
+function resetChartZoom() {
+    if (fullscreenChart) {
+        fullscreenChart.resetZoom();
+    }
+}
+
+function renderFullscreenChart(chartType) {
+    const ctx = document.getElementById('fullscreen-chart').getContext('2d');
+
+    if (fullscreenChart) {
+        fullscreenChart.destroy();
+    }
+
+    if (chartType === 'weight') {
+        renderFullscreenWeightChart(ctx);
+    } else {
+        renderFullscreenLipidChart(ctx);
+    }
+}
+
+function renderFullscreenWeightChart(ctx) {
+    const allEntries = entries
+        .filter(e => e.weight || e.waist)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (allEntries.length === 0) return;
+
+    // Show last 60 entries initially, allow panning to see all
+    const initialVisible = Math.min(60, allEntries.length);
+    const minIndex = Math.max(0, allEntries.length - initialVisible);
+
+    fullscreenChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: allEntries.map(e => formatDateWithYear(e.date)),
+            datasets: [
+                {
+                    label: 'Weight (lbs)',
+                    data: allEntries.map(e => e.weight || null),
+                    borderColor: '#007AFF',
+                    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    yAxisID: 'yWeight'
+                },
+                {
+                    label: 'Waist (in)',
+                    data: allEntries.map(e => e.waist || null),
+                    borderColor: '#FF9500',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    yAxisID: 'yWaist'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 12 } }
+                },
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'x',
+                        threshold: 5
+                    },
+                    zoom: {
+                        wheel: { enabled: false },
+                        pinch: { enabled: true },
+                        mode: 'x'
+                    },
+                    limits: {
+                        x: { min: 0, max: allEntries.length - 1, minRange: 10 }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    min: minIndex,
+                    max: allEntries.length - 1,
+                    ticks: {
+                        maxTicksLimit: 8,
+                        font: { size: 11 }
+                    }
+                },
+                yWeight: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Weight (lbs)',
+                        font: { size: 12 }
+                    },
+                    ticks: { font: { size: 11 } }
+                },
+                yWaist: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Waist (in)',
+                        font: { size: 12 }
+                    },
+                    ticks: { font: { size: 11 } },
+                    grid: { drawOnChartArea: false }
+                }
+            }
+        }
+    });
+}
+
+function renderFullscreenLipidChart(ctx) {
+    const lipidEntries = entries
+        .filter(e => e.totalChol || e.ldl || e.hdl)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (lipidEntries.length === 0) return;
+
+    fullscreenChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: lipidEntries.map(e => formatDateWithYear(e.date)),
+            datasets: [
+                {
+                    label: 'Total Chol',
+                    data: lipidEntries.map(e => e.totalChol || null),
+                    borderColor: '#FF9500',
+                    backgroundColor: 'transparent',
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 7
+                },
+                {
+                    label: 'LDL',
+                    data: lipidEntries.map(e => e.ldl || null),
+                    borderColor: '#FF3B30',
+                    backgroundColor: 'transparent',
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 7
+                },
+                {
+                    label: 'HDL',
+                    data: lipidEntries.map(e => e.hdl || null),
+                    borderColor: '#34C759',
+                    backgroundColor: 'transparent',
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 7
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 12 } }
+                },
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'x',
+                        threshold: 5
+                    },
+                    zoom: {
+                        wheel: { enabled: false },
+                        pinch: { enabled: true },
+                        mode: 'x'
+                    },
+                    limits: {
+                        x: { min: 0, max: lipidEntries.length - 1, minRange: 3 }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    ticks: {
+                        maxTicksLimit: 8,
+                        font: { size: 11 }
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'mg/dL',
+                        font: { size: 12 }
+                    },
+                    ticks: { font: { size: 11 } }
+                }
+            }
+        }
+    });
+}
+
 // Make functions globally available
 window.showView = showView;
 window.editEntry = editEntry;
@@ -684,3 +905,6 @@ window.deleteEntry = deleteEntry;
 window.toggleField = toggleField;
 window.exportCSV = exportCSV;
 window.clearAllData = clearAllData;
+window.openChartFullscreen = openChartFullscreen;
+window.closeChartFullscreen = closeChartFullscreen;
+window.resetChartZoom = resetChartZoom;

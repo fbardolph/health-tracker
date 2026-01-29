@@ -502,6 +502,92 @@ main {
     opacity: 1;
 }
 
+/* Fullscreen Chart Modal */
+.fullscreen-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg);
+    z-index: 1000;
+    flex-direction: column;
+}
+
+.fullscreen-modal.active {
+    display: flex;
+}
+
+.fullscreen-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.fullscreen-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    flex: 1;
+    text-align: center;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px 12px;
+}
+
+.reset-btn {
+    background: none;
+    border: none;
+    font-size: 0.9rem;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 8px 12px;
+}
+
+.fullscreen-chart-wrapper {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.fullscreen-chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.fullscreen-hint {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 8px;
+    flex-shrink: 0;
+}
+
+/* Make chart containers tappable */
+.chart-container {
+    cursor: pointer;
+}
+
+.chart-container:active {
+    opacity: 0.8;
+}
+
 /* Responsive adjustments for larger phones */
 @media (min-width: 400px) {
     .stat-value {
@@ -510,5 +596,16 @@ main {
 
     .chart-container canvas {
         max-height: 250px;
+    }
+}
+
+/* Landscape orientation for fullscreen chart */
+@media (orientation: landscape) {
+    .fullscreen-header {
+        padding: 8px 16px;
+    }
+
+    .fullscreen-hint {
+        padding: 4px;
     }
 }
