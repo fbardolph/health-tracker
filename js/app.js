@@ -35,6 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderDashboard();
     renderFieldToggles();
     applyFieldVisibility();
+
+    // Debug: verify zoom plugin loaded
+    console.log('Chart.js version:', Chart.version);
+    console.log('Zoom plugin registered:', !!Chart.registry.plugins.get('zoom'));
+    console.log('Hammer.js available:', typeof Hammer !== 'undefined');
 });
 
 // Data Management
@@ -760,12 +765,18 @@ function renderFullscreenWeightChart(ctx) {
                     pan: {
                         enabled: true,
                         mode: 'x',
-                        threshold: 5
+                        threshold: 5,
+                        onPanStart: () => { console.log('Pan started'); return true; },
+                        onPan: () => { console.log('Panning'); },
+                        onPanComplete: () => { console.log('Pan complete'); }
                     },
                     zoom: {
                         wheel: { enabled: false },
                         pinch: { enabled: true },
-                        mode: 'x'
+                        mode: 'x',
+                        onZoomStart: () => { console.log('Zoom started'); return true; },
+                        onZoom: () => { console.log('Zooming'); },
+                        onZoomComplete: () => { console.log('Zoom complete'); }
                     },
                     limits: {
                         x: { min: 0, max: allEntries.length - 1, minRange: 10 }
@@ -864,12 +875,16 @@ function renderFullscreenLipidChart(ctx) {
                     pan: {
                         enabled: true,
                         mode: 'x',
-                        threshold: 5
+                        threshold: 5,
+                        onPanStart: () => { console.log('Pan started'); return true; },
+                        onPan: () => { console.log('Panning'); }
                     },
                     zoom: {
                         wheel: { enabled: false },
                         pinch: { enabled: true },
-                        mode: 'x'
+                        mode: 'x',
+                        onZoomStart: () => { console.log('Zoom started'); return true; },
+                        onZoom: () => { console.log('Zooming'); }
                     },
                     limits: {
                         x: { min: 0, max: lipidEntries.length - 1, minRange: 3 }
