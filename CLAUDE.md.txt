@@ -1,0 +1,15 @@
+# Project Overview
+This project is a personal health tracking web app. It replaces my Airtable instance.
+The app should track the fields in the .csv file in the /Data folder (and should load the existing values I pulled from AirTable) as I input them whenever I weigh myself, or get results back from lipid panels, etc.
+
+# Tech Preferences
+I want a simple web app that works on my iPhone:
+- Mobile-first design
+- Simple forms to enter values or to add new fields or remove fields I no longer want
+- A summary dashboard with charts
+- Lightweight hosting (Netlify, GitHub Pages, or local)
+
+# Tasks for Claude
+- Generate the data model
+- Build HTML/CSS/JS pages OR a framework-based variant (your choice)
+- Create forms and a simple local-store or file-based backend for now
