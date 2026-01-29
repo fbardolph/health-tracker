@@ -89,6 +89,14 @@ main {
     margin-bottom: 24px;
 }
 
+.quick-stats .section-title {
+    grid-column: 1 / -1;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
 .stat-card {
     background: var(--card-bg);
     border-radius: 12px;
@@ -130,7 +138,13 @@ main {
 .chart-container h2 {
     font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 4px;
+}
+
+.chart-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
 }
 
 .chart-container canvas {

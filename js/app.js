@@ -105,52 +105,109 @@ function renderQuickStats() {
 function renderWeightChart() {
     const ctx = document.getElementById('weight-chart').getContext('2d');
 
-    // Get entries with weight, sorted by date
-    const weightEntries = entries
-        .filter(e => e.weight)
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .slice(-90); // Last 90 entries
+    // Get entries with weight or waist, sorted by date
+    const allEntries = entries
+        .filter(e => e.weight || e.waist)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     if (weightChart) {
         weightChart.destroy();
     }
 
-    if (weightEntries.length === 0) {
+    if (allEntries.length === 0) {
         return;
     }
+
+    // Show last 90 entries initially, but allow scrolling to see all
+    const initialVisibleCount = Math.min(90, allEntries.length);
+    const minIndex = Math.max(0, allEntries.length - initialVisibleCount);
 
     weightChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: weightEntries.map(e => formatDateShort(e.date)),
-            datasets: [{
-                label: 'Weight (lbs)',
-                data: weightEntries.map(e => e.weight),
-                borderColor: '#007AFF',
-                backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                fill: true,
-                tension: 0.3,
-                pointRadius: 2,
-                pointHoverRadius: 5
-            }]
+            labels: allEntries.map(e => formatDateWithYear(e.date)),
+            datasets: [
+                {
+                    label: 'Weight (lbs)',
+                    data: allEntries.map(e => e.weight || null),
+                    borderColor: '#007AFF',
+                    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    yAxisID: 'yWeight'
+                },
+                {
+                    label: 'Waist (in)',
+                    data: allEntries.map(e => e.waist || null),
+                    borderColor: '#FF9500',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    yAxisID: 'yWaist'
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { display: false }
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 10 } }
+                },
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'x',
+                        modifierKey: null,
+                        onPanStart: function({chart, point}) {
+                            return true;
+                        }
+                    },
+                    limits: {
+                        x: { min: 0, max: allEntries.length - 1 }
+                    }
+                }
             },
             scales: {
                 x: {
                     display: true,
+                    min: minIndex,
+                    max: allEntries.length - 1,
                     ticks: {
                         maxTicksLimit: 6,
                         font: { size: 10 }
                     }
                 },
-                y: {
+                yWeight: {
+                    type: 'linear',
                     display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'lbs',
+                        font: { size: 10 }
+                    },
                     ticks: { font: { size: 10 } }
+                },
+                yWaist: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'in',
+                        font: { size: 10 }
+                    },
+                    ticks: { font: { size: 10 } },
+                    grid: {
+                        drawOnChartArea: false
+                    }
                 }
             }
         }
@@ -176,7 +233,7 @@ function renderLipidChart() {
     lipidChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: lipidEntries.map(e => formatDateShort(e.date)),
+            labels: lipidEntries.map(e => formatDateWithYear(e.date)),
             datasets: [
                 {
                     label: 'Total',
@@ -212,6 +269,15 @@ function renderLipidChart() {
                     display: true,
                     position: 'bottom',
                     labels: { boxWidth: 12, font: { size: 10 } }
+                },
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'x'
+                    },
+                    limits: {
+                        x: { min: 0, max: lipidEntries.length - 1 }
+                    }
                 }
             },
             scales: {
@@ -581,6 +647,12 @@ function formatDateShort(dateStr) {
     if (!dateStr) return '';
     const date = new Date(dateStr + 'T00:00:00');
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDateWithYear(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
 }
 
 function formatDateForCSV(dateStr) {

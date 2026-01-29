@@ -8,16 +8,14 @@
     <title>Health Tracker</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 </head>
 <body>
     <!-- Dashboard View -->
     <div id="view-dashboard" class="view active">
-        <header>
-            <h1>Health Tracker</h1>
-        </header>
-
         <main class="dashboard">
             <section class="quick-stats">
+                <h2 class="section-title">Most Recent Stats</h2>
                 <div class="stat-card">
                     <span class="stat-label">Weight</span>
                     <span class="stat-value" id="stat-weight">--</span>
@@ -36,12 +34,14 @@
             </section>
 
             <section class="chart-container">
-                <h2>Weight Trend</h2>
+                <h2>Weight & Waist Trend</h2>
+                <p class="chart-hint">Two-finger drag to scroll</p>
                 <canvas id="weight-chart"></canvas>
             </section>
 
             <section class="chart-container">
                 <h2>Lipid Panel</h2>
+                <p class="chart-hint">Two-finger drag to scroll</p>
                 <canvas id="lipid-chart"></canvas>
             </section>
 

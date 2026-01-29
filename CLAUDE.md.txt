@@ -9,6 +9,23 @@ I want a simple web app that works on my iPhone:
 - A summary dashboard with charts
 - Lightweight hosting (Netlify, GitHub Pages, or local)
 
+# UI/UX Preferences
+- Dashboard should not have a header title - keep it clean
+- "Most Recent Stats" title above the quick stats cards (Weight, Waist, BP)
+- Charts should show year in x-axis labels (e.g., "Jan 15, '25") for clarity across year boundaries
+- Charts should support horizontal scrolling/panning to view historical data
+- Weight & Waist Trend chart: dual y-axis with Weight (lbs) on left, Waist (inches) on right
+- Two-finger drag to pan charts on mobile
+
+# Data Storage
+- Uses browser LocalStorage (data is device-specific, not synced)
+- Primary usage is on iPhone
+- Export CSV regularly for backup
+
+# Hosting
+- Hosted on GitHub Pages: https://fbardolph.github.io/health-tracker
+- Repo: https://github.com/fbardolph/health-tracker
+
 # Tasks for Claude
 - Generate the data model
 - Build HTML/CSS/JS pages OR a framework-based variant (your choice)
