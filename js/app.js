@@ -27,6 +27,14 @@ let lipidChart = null;
 let fullscreenChart = null;
 let currentFullscreenType = null;
 
+// Target values
+const TARGETS = {
+    weight: 175,          // lbs
+    totalChol: 200,       // mg/dL - desirable is below this
+    ldl: 100,             // mg/dL - optimal is below this
+    hdl: 60               // mg/dL - protective level (higher is better)
+};
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
@@ -723,6 +731,9 @@ function renderFullscreenWeightChart(ctx) {
     const initialVisible = Math.min(60, allEntries.length);
     const minIndex = Math.max(0, allEntries.length - initialVisible);
 
+    // Create target line data (same value for each point)
+    const weightTargetData = allEntries.map(() => TARGETS.weight);
+
     fullscreenChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -749,6 +760,18 @@ function renderFullscreenWeightChart(ctx) {
                     pointRadius: 3,
                     pointHoverRadius: 6,
                     yAxisID: 'yWaist'
+                },
+                {
+                    label: 'Target (175)',
+                    data: weightTargetData,
+                    borderColor: '#34C759',
+                    backgroundColor: 'transparent',
+                    borderDash: [10, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0,
+                    yAxisID: 'yWeight'
                 }
             ]
         },
@@ -828,6 +851,11 @@ function renderFullscreenLipidChart(ctx) {
 
     if (lipidEntries.length === 0) return;
 
+    // Create target line data
+    const totalTarget = lipidEntries.map(() => TARGETS.totalChol);
+    const ldlTarget = lipidEntries.map(() => TARGETS.ldl);
+    const hdlTarget = lipidEntries.map(() => TARGETS.hdl);
+
     fullscreenChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -859,6 +887,39 @@ function renderFullscreenLipidChart(ctx) {
                     tension: 0.3,
                     pointRadius: 4,
                     pointHoverRadius: 7
+                },
+                {
+                    label: 'Total Target (<200)',
+                    data: totalTarget,
+                    borderColor: 'rgba(255, 149, 0, 0.4)',
+                    backgroundColor: 'transparent',
+                    borderDash: [10, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0
+                },
+                {
+                    label: 'LDL Target (<100)',
+                    data: ldlTarget,
+                    borderColor: 'rgba(255, 59, 48, 0.4)',
+                    backgroundColor: 'transparent',
+                    borderDash: [10, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0
+                },
+                {
+                    label: 'HDL Target (>60)',
+                    data: hdlTarget,
+                    borderColor: 'rgba(52, 199, 89, 0.4)',
+                    backgroundColor: 'transparent',
+                    borderDash: [10, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0
                 }
             ]
         },
