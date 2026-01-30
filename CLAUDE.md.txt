@@ -74,3 +74,6 @@ Four bottom nav items with simple SVG icons:
 - Touch pan/zoom only works reliably in fullscreen chart view (not dashboard)
 - Cache-busting: increment ?v=N in index.html when deploying changes
 - Test on actual iPhone - touch behavior differs from desktop
+
+# Future Ideas / Backlog
+- (Add any features you want to revisit later)
