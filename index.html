@@ -6,8 +6,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Health Tracker</title>
-    <link rel="stylesheet" href="css/styles.css?v=5">
+    <link rel="stylesheet" href="css/styles.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
 </head>
@@ -40,6 +41,12 @@
                 <canvas id="weight-chart"></canvas>
             </section>
 
+            <section class="chart-container" onclick="openChartFullscreen('alcohol')">
+                <h2>Alcohol Consumption</h2>
+                <p class="chart-hint">Tap to expand</p>
+                <canvas id="alcohol-chart"></canvas>
+            </section>
+
             <section class="chart-container" onclick="openChartFullscreen('lipid')">
                 <h2>Lipid Panel</h2>
                 <p class="chart-hint">Tap to expand</p>
@@ -61,6 +68,7 @@
             <button class="back-btn" onclick="showView('dashboard')">&larr;</button>
             <h1 id="entry-title">New Entry</h1>
             <button class="delete-btn" id="delete-btn" onclick="deleteEntry()" style="display:none">Delete</button>
+            <button type="submit" form="health-form" class="btn-save-top">Save</button>
         </header>
 
         <main class="entry-form">
@@ -72,22 +80,40 @@
                     <input type="date" id="entry-date" required>
                 </div>
 
-                <div class="form-group" data-field="weight">
-                    <label for="entry-weight">Weight (lbs)</label>
-                    <input type="number" id="entry-weight" inputmode="decimal" step="0.1" min="0" max="500">
+                <div class="form-section" data-field="alcohol">
+                    <h3>Daily</h3>
+
+                    <div class="form-group">
+                        <label>Alcoholic Drinks</label>
+                        <div class="counter">
+                            <button type="button" class="counter-btn" onclick="changeAlcohol(-1)" aria-label="Decrease">&minus;</button>
+                            <span class="counter-value" id="entry-alcohol-display">0</span>
+                            <button type="button" class="counter-btn" onclick="changeAlcohol(1)" aria-label="Increase">+</button>
+                        </div>
+                        <input type="hidden" id="entry-alcohol" value="0">
+                    </div>
                 </div>
 
-                <div class="form-group" data-field="waist">
-                    <label for="entry-waist">Waist Circumference (in)</label>
-                    <input type="number" id="entry-waist" inputmode="decimal" step="0.125" min="0" max="100">
-                </div>
+                <div class="form-section">
+                    <h3>Weekly</h3>
 
-                <div class="form-group" data-field="bp">
-                    <label>Blood Pressure</label>
-                    <div class="bp-inputs">
-                        <input type="number" id="entry-bp-sys" inputmode="numeric" placeholder="Systolic" min="0" max="300">
-                        <span>/</span>
-                        <input type="number" id="entry-bp-dia" inputmode="numeric" placeholder="Diastolic" min="0" max="200">
+                    <div class="form-group" data-field="weight">
+                        <label for="entry-weight">Weight (lbs)</label>
+                        <input type="number" id="entry-weight" inputmode="decimal" step="0.1" min="0" max="500">
+                    </div>
+
+                    <div class="form-group" data-field="waist">
+                        <label for="entry-waist">Waist Circumference (in)</label>
+                        <input type="number" id="entry-waist" inputmode="decimal" step="0.125" min="0" max="100">
+                    </div>
+
+                    <div class="form-group" data-field="bp">
+                        <label>Blood Pressure</label>
+                        <div class="bp-inputs">
+                            <input type="number" id="entry-bp-sys" inputmode="numeric" placeholder="Systolic" min="0" max="300">
+                            <span>/</span>
+                            <input type="number" id="entry-bp-dia" inputmode="numeric" placeholder="Diastolic" min="0" max="200">
+                        </div>
                     </div>
                 </div>
 
@@ -129,8 +155,6 @@
                     <label for="entry-bmi">BMI</label>
                     <input type="number" id="entry-bmi" inputmode="decimal" step="0.01" min="0" max="100">
                 </div>
-
-                <button type="submit" class="btn-primary">Save Entry</button>
             </form>
         </main>
     </div>
@@ -203,6 +227,7 @@
                             <th>Trig</th>
                             <th>BMI</th>
                             <th>ApoB</th>
+                            <th>Alc</th>
                         </tr>
                     </thead>
                     <tbody id="data-table-body">
@@ -260,6 +285,6 @@
         </button>
     </nav>
 
-    <script src="js/app.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
 </body>
 </html>

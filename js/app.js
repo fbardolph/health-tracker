@@ -14,7 +14,8 @@ const FIELDS = [
     { id: 'nonHdl', label: 'Non-HDL', csvHeader: 'Non-HDL' },
     { id: 'triglycerides', label: 'Triglycerides', csvHeader: 'Triglycerides' },
     { id: 'bmi', label: 'BMI', csvHeader: 'BMI' },
-    { id: 'apoB', label: 'ApoB', csvHeader: 'ApoB' }
+    { id: 'apoB', label: 'ApoB', csvHeader: 'ApoB' },
+    { id: 'alcohol', label: 'Alcoholic Drinks', csvHeader: 'Alcohol' }
 ];
 
 // State
@@ -24,6 +25,7 @@ let settings = {
 };
 let weightChart = null;
 let lipidChart = null;
+let alcoholChart = null;
 let fullscreenChart = null;
 let currentFullscreenType = null;
 
@@ -98,10 +100,60 @@ function showView(viewName) {
     }
 }
 
+// Chart time-axis helpers
+function isoToLocalDate(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+// Trailing 3-month default window, anchored to the most recent date in the data
+function threeMonthWindow(sortedAscEntries) {
+    const lastISO = sortedAscEntries[sortedAscEntries.length - 1].date;
+    const max = isoToLocalDate(lastISO);
+    max.setDate(max.getDate() + 1); // pad a day so the last point isn't clipped
+    const min = new Date(max);
+    min.setMonth(min.getMonth() - 3);
+    return { min: min.getTime(), max: max.getTime() };
+}
+
+// Full timestamp span of the data, used for zoom/pan limits
+function dataSpan(sortedAscEntries) {
+    const first = isoToLocalDate(sortedAscEntries[0].date).getTime();
+    const last = isoToLocalDate(sortedAscEntries[sortedAscEntries.length - 1].date).getTime();
+    return { min: first, max: last + 86400000 };
+}
+
+// Build a continuous day-by-day series so missing days render as gaps (null)
+function buildDailySeries(sortedAscEntries, valueKey) {
+    const byDate = {};
+    sortedAscEntries.forEach(e => { byDate[e.date] = e[valueKey]; });
+
+    const startISO = sortedAscEntries[0].date;
+    const endISO = sortedAscEntries[sortedAscEntries.length - 1].date;
+    const [sy, sm, sd] = startISO.split('-').map(Number);
+    const [ey, em, ed] = endISO.split('-').map(Number);
+
+    let t = Date.UTC(sy, sm - 1, sd);
+    const end = Date.UTC(ey, em - 1, ed);
+    const out = [];
+    while (t <= end) {
+        const iso = new Date(t).toISOString().slice(0, 10);
+        out.push({ x: iso, y: (iso in byDate) ? byDate[iso] : null });
+        t += 86400000;
+    }
+    return out;
+}
+
+const TIME_DISPLAY_FORMATS = {
+    day: 'MMM d',
+    week: 'MMM d',
+    month: 'MMM yyyy'
+};
+
 // Dashboard
-function renderDashboard() {
-    renderQuickStats();
+function renderDashboard() {    renderQuickStats();
     renderWeightChart();
+    renderAlcoholChart();
     renderLipidChart();
     renderRecentEntries();
 }
@@ -135,17 +187,15 @@ function renderWeightChart() {
         return;
     }
 
-    // Show last 90 entries on dashboard
-    const recentEntries = allEntries.slice(-90);
+    const windowBounds = threeMonthWindow(allEntries);
 
     weightChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: recentEntries.map(e => formatDateWithYear(e.date)),
             datasets: [
                 {
                     label: 'Weight (lbs)',
-                    data: recentEntries.map(e => e.weight || null),
+                    data: allEntries.map(e => ({ x: e.date, y: e.weight ?? null })),
                     borderColor: '#007AFF',
                     backgroundColor: 'rgba(0, 122, 255, 0.1)',
                     fill: true,
@@ -156,7 +206,7 @@ function renderWeightChart() {
                 },
                 {
                     label: 'Waist (in)',
-                    data: recentEntries.map(e => e.waist || null),
+                    data: allEntries.map(e => ({ x: e.date, y: e.waist ?? null })),
                     borderColor: '#FF9500',
                     backgroundColor: 'transparent',
                     borderDash: [5, 5],
@@ -179,6 +229,10 @@ function renderWeightChart() {
             },
             scales: {
                 x: {
+                    type: 'time',
+                    time: { tooltipFormat: 'MMM d, yyyy', displayFormats: TIME_DISPLAY_FORMATS },
+                    min: windowBounds.min,
+                    max: windowBounds.max,
                     display: true,
                     ticks: {
                         maxTicksLimit: 6,
@@ -215,9 +269,86 @@ function renderWeightChart() {
     });
 }
 
+function renderAlcoholChart() {
+    const ctx = document.getElementById('alcohol-chart').getContext('2d');
+
+    // Entries that recorded a drink count (0 is a valid value)
+    const alcoholEntries = entries
+        .filter(e => e.alcohol != null)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (alcoholChart) {
+        alcoholChart.destroy();
+    }
+
+    if (alcoholEntries.length === 0) {
+        return;
+    }
+
+    // Continuous daily series: missing days become gaps, recorded 0s stay visible
+    const series = buildDailySeries(alcoholEntries, 'alcohol');
+    const windowBounds = threeMonthWindow(alcoholEntries);
+
+    alcoholChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Drinks',
+                    data: series,
+                    borderColor: '#AF52DE',
+                    backgroundColor: 'rgba(175, 82, 222, 0.15)',
+                    fill: true,
+                    spanGaps: false,
+                    tension: 0,
+                    stepped: false,
+                    pointRadius: 2.5,
+                    pointHoverRadius: 5
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 10 } }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { tooltipFormat: 'MMM d, yyyy', displayFormats: TIME_DISPLAY_FORMATS },
+                    min: windowBounds.min,
+                    max: windowBounds.max,
+                    display: true,
+                    ticks: {
+                        maxTicksLimit: 6,
+                        font: { size: 10 }
+                    }
+                },
+                y: {
+                    display: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'drinks',
+                        font: { size: 10 }
+                    },
+                    ticks: {
+                        font: { size: 10 },
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+}
+
 function renderLipidChart() {
     const ctx = document.getElementById('lipid-chart').getContext('2d');
-
     // Get entries with lipid data
     const lipidEntries = entries
         .filter(e => e.totalChol || e.ldl || e.hdl)
@@ -234,11 +365,10 @@ function renderLipidChart() {
     lipidChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: lipidEntries.map(e => formatDateWithYear(e.date)),
             datasets: [
                 {
                     label: 'Total',
-                    data: lipidEntries.map(e => e.totalChol || null),
+                    data: lipidEntries.map(e => ({ x: e.date, y: e.totalChol ?? null })),
                     borderColor: '#FF9500',
                     backgroundColor: 'transparent',
                     tension: 0.3,
@@ -246,7 +376,7 @@ function renderLipidChart() {
                 },
                 {
                     label: 'LDL',
-                    data: lipidEntries.map(e => e.ldl || null),
+                    data: lipidEntries.map(e => ({ x: e.date, y: e.ldl ?? null })),
                     borderColor: '#FF3B30',
                     backgroundColor: 'transparent',
                     tension: 0.3,
@@ -254,7 +384,7 @@ function renderLipidChart() {
                 },
                 {
                     label: 'HDL',
-                    data: lipidEntries.map(e => e.hdl || null),
+                    data: lipidEntries.map(e => ({ x: e.date, y: e.hdl ?? null })),
                     borderColor: '#34C759',
                     backgroundColor: 'transparent',
                     tension: 0.3,
@@ -274,6 +404,10 @@ function renderLipidChart() {
             },
             scales: {
                 x: {
+                    type: 'time',
+                    time: { tooltipFormat: 'MMM d, yyyy', displayFormats: TIME_DISPLAY_FORMATS },
+                    min: threeMonthWindow(lipidEntries).min,
+                    max: threeMonthWindow(lipidEntries).max,
                     display: true,
                     ticks: {
                         maxTicksLimit: 6,
@@ -336,7 +470,20 @@ function resetEntryForm() {
     document.getElementById('entry-date').value = getTodayString();
     document.getElementById('entry-title').textContent = 'New Entry';
     document.getElementById('delete-btn').style.display = 'none';
+    setAlcohol(0);
     applyFieldVisibility();
+}
+
+// Daily alcohol counter
+function setAlcohol(count) {
+    const value = Math.max(0, parseInt(count) || 0);
+    document.getElementById('entry-alcohol').value = value;
+    document.getElementById('entry-alcohol-display').textContent = value;
+}
+
+function changeAlcohol(delta) {
+    const current = parseInt(document.getElementById('entry-alcohol').value) || 0;
+    setAlcohol(current + delta);
 }
 
 function editEntry(id) {
@@ -356,6 +503,7 @@ function editEntry(id) {
     document.getElementById('entry-trig').value = entry.triglycerides || '';
     document.getElementById('entry-bmi').value = entry.bmi || '';
     document.getElementById('entry-apob').value = entry.apoB || '';
+    setAlcohol(entry.alcohol || 0);
 
     // Handle blood pressure
     if (entry.bp) {
@@ -390,7 +538,8 @@ function handleFormSubmit(e) {
         nonHdl: parseFloatOrNull(document.getElementById('entry-non-hdl').value),
         triglycerides: parseFloatOrNull(document.getElementById('entry-trig').value),
         bmi: parseFloatOrNull(document.getElementById('entry-bmi').value),
-        apoB: parseFloatOrNull(document.getElementById('entry-apob').value)
+        apoB: parseFloatOrNull(document.getElementById('entry-apob').value),
+        alcohol: parseIntOrNull(document.getElementById('entry-alcohol').value)
     };
 
     if (id) {
@@ -518,7 +667,8 @@ function parseCSV(csv) {
             nonHdl: parseFloatOrNull(row['Non-HDL']),
             triglycerides: parseFloatOrNull(row['Triglycerides']),
             bmi: parseFloatOrNull(row['BMI']),
-            apoB: parseFloatOrNull(row['ApoB'])
+            apoB: parseFloatOrNull(row['ApoB']),
+            alcohol: parseIntOrNull(row['Alcohol'])
         };
 
         // Only include entries with at least a date
@@ -574,7 +724,7 @@ function parseDate(dateStr) {
 
 function exportCSV() {
     const headers = ['ID', 'Date', 'Waist Circumference', 'Weight', 'Blood Pressure',
-                     'Total Chol', 'HDL', 'LDL', 'Non-HDL', 'Triglycerides', 'BMI', 'ApoB'];
+                     'Total Chol', 'HDL', 'LDL', 'Non-HDL', 'Triglycerides', 'BMI', 'ApoB', 'Alcohol'];
 
     const sorted = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -590,7 +740,8 @@ function exportCSV() {
         e.nonHdl || '',
         e.triglycerides || '',
         e.bmi || '',
-        e.apoB || ''
+        e.apoB || '',
+        (e.alcohol === 0 || e.alcohol) ? e.alcohol : ''
     ]);
 
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -622,6 +773,12 @@ function clearAllData() {
 function parseFloatOrNull(value) {
     if (!value || value === '') return null;
     const num = parseFloat(value);
+    return isNaN(num) ? null : num;
+}
+
+function parseIntOrNull(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const num = parseInt(value);
     return isNaN(num) ? null : num;
 }
 
@@ -691,6 +848,7 @@ function renderDataTable() {
             <td>${entry.triglycerides || '<span class="empty-cell">-</span>'}</td>
             <td>${entry.bmi || '<span class="empty-cell">-</span>'}</td>
             <td>${entry.apoB || '<span class="empty-cell">-</span>'}</td>
+            <td>${(entry.alcohol === 0 || entry.alcohol) ? entry.alcohol : '<span class="empty-cell">-</span>'}</td>
         </tr>
     `).join('');
 }
@@ -703,6 +861,8 @@ function openChartFullscreen(chartType) {
 
     if (chartType === 'weight') {
         title.textContent = 'Weight & Waist Trend';
+    } else if (chartType === 'alcohol') {
+        title.textContent = 'Alcohol Consumption';
     } else {
         title.textContent = 'Lipid Panel';
     }
@@ -743,6 +903,8 @@ function renderFullscreenChart(chartType) {
 
     if (chartType === 'weight') {
         renderFullscreenWeightChart(ctx);
+    } else if (chartType === 'alcohol') {
+        renderFullscreenAlcoholChart(ctx);
     } else {
         renderFullscreenLipidChart(ctx);
     }
@@ -755,21 +917,24 @@ function renderFullscreenWeightChart(ctx) {
 
     if (allEntries.length === 0) return;
 
-    // Show last 60 entries initially, allow panning to see all
-    const initialVisible = Math.min(60, allEntries.length);
-    const minIndex = Math.max(0, allEntries.length - initialVisible);
+    const windowBounds = threeMonthWindow(allEntries);
+    const span = dataSpan(allEntries);
 
-    // Create target line data (same value for each point)
-    const weightTargetData = allEntries.map(() => TARGETS.weight);
+    // Target line: two points spanning the full date range
+    const firstISO = allEntries[0].date;
+    const lastISO = allEntries[allEntries.length - 1].date;
+    const weightTargetData = [
+        { x: firstISO, y: TARGETS.weight },
+        { x: lastISO, y: TARGETS.weight }
+    ];
 
     fullscreenChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: allEntries.map(e => formatDateWithYear(e.date)),
             datasets: [
                 {
                     label: 'Weight (lbs)',
-                    data: allEntries.map(e => e.weight || null),
+                    data: allEntries.map(e => ({ x: e.date, y: e.weight ?? null })),
                     borderColor: '#007AFF',
                     backgroundColor: 'rgba(0, 122, 255, 0.1)',
                     fill: true,
@@ -780,7 +945,7 @@ function renderFullscreenWeightChart(ctx) {
                 },
                 {
                     label: 'Waist (in)',
-                    data: allEntries.map(e => e.waist || null),
+                    data: allEntries.map(e => ({ x: e.date, y: e.waist ?? null })),
                     borderColor: '#FF9500',
                     backgroundColor: 'transparent',
                     borderDash: [5, 5],
@@ -816,29 +981,25 @@ function renderFullscreenWeightChart(ctx) {
                     pan: {
                         enabled: true,
                         mode: 'x',
-                        threshold: 5,
-                        onPanStart: () => { console.log('Pan started'); return true; },
-                        onPan: () => { console.log('Panning'); },
-                        onPanComplete: () => { console.log('Pan complete'); }
+                        threshold: 5
                     },
                     zoom: {
                         wheel: { enabled: false },
                         pinch: { enabled: true },
-                        mode: 'x',
-                        onZoomStart: () => { console.log('Zoom started'); return true; },
-                        onZoom: () => { console.log('Zooming'); },
-                        onZoomComplete: () => { console.log('Zoom complete'); }
+                        mode: 'x'
                     },
                     limits: {
-                        x: { min: 0, max: allEntries.length - 1, minRange: 10 }
+                        x: { min: span.min, max: span.max, minRange: 10 * 86400000 }
                     }
                 }
             },
             scales: {
                 x: {
+                    type: 'time',
+                    time: { tooltipFormat: 'MMM d, yyyy', displayFormats: TIME_DISPLAY_FORMATS },
                     display: true,
-                    min: minIndex,
-                    max: allEntries.length - 1,
+                    min: windowBounds.min,
+                    max: windowBounds.max,
                     ticks: {
                         maxTicksLimit: 8,
                         font: { size: 11 }
@@ -872,6 +1033,108 @@ function renderFullscreenWeightChart(ctx) {
     });
 }
 
+function renderFullscreenAlcoholChart(ctx) {
+    const alcoholEntries = entries
+        .filter(e => e.alcohol != null)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (alcoholEntries.length === 0) return;
+
+    const series = buildDailySeries(alcoholEntries, 'alcohol');
+    const windowBounds = threeMonthWindow(alcoholEntries);
+    const span = dataSpan(alcoholEntries);
+
+    // 7-day trailing average over the daily series (ignoring days with no entry)
+    const trailingAvg = series.map((pt, i) => {
+        const start = Math.max(0, i - 6);
+        const window = series.slice(start, i + 1).map(p => p.y).filter(v => v != null);
+        if (window.length === 0) return { x: pt.x, y: null };
+        const sum = window.reduce((a, b) => a + b, 0);
+        return { x: pt.x, y: Math.round((sum / window.length) * 10) / 10 };
+    });
+
+    fullscreenChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Drinks',
+                    data: series,
+                    borderColor: '#AF52DE',
+                    backgroundColor: 'rgba(175, 82, 222, 0.15)',
+                    fill: true,
+                    spanGaps: false,
+                    tension: 0,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    order: 2
+                },
+                {
+                    label: '7-day avg',
+                    data: trailingAvg,
+                    borderColor: '#FF9500',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    spanGaps: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 12 } }
+                },
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'x',
+                        threshold: 5
+                    },
+                    zoom: {
+                        wheel: { enabled: false },
+                        pinch: { enabled: true },
+                        mode: 'x'
+                    },
+                    limits: {
+                        x: { min: span.min, max: span.max, minRange: 7 * 86400000 }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { tooltipFormat: 'MMM d, yyyy', displayFormats: TIME_DISPLAY_FORMATS },
+                    display: true,
+                    min: windowBounds.min,
+                    max: windowBounds.max,
+                    ticks: {
+                        maxTicksLimit: 8,
+                        font: { size: 11 }
+                    }
+                },
+                y: {
+                    display: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Drinks',
+                        font: { size: 12 }
+                    },
+                    ticks: { font: { size: 11 }, precision: 0 }
+                }
+            }
+        }
+    });
+}
+
 function renderFullscreenLipidChart(ctx) {
     const lipidEntries = entries
         .filter(e => e.totalChol || e.ldl || e.hdl)
@@ -879,19 +1142,23 @@ function renderFullscreenLipidChart(ctx) {
 
     if (lipidEntries.length === 0) return;
 
-    // Create target line data
-    const totalTarget = lipidEntries.map(() => TARGETS.totalChol);
-    const ldlTarget = lipidEntries.map(() => TARGETS.ldl);
-    const hdlTarget = lipidEntries.map(() => TARGETS.hdl);
+    const windowBounds = threeMonthWindow(lipidEntries);
+    const span = dataSpan(lipidEntries);
+    const firstISO = lipidEntries[0].date;
+    const lastISO = lipidEntries[lipidEntries.length - 1].date;
+
+    // Target lines: two points spanning the full date range
+    const totalTarget = [{ x: firstISO, y: TARGETS.totalChol }, { x: lastISO, y: TARGETS.totalChol }];
+    const ldlTarget = [{ x: firstISO, y: TARGETS.ldl }, { x: lastISO, y: TARGETS.ldl }];
+    const hdlTarget = [{ x: firstISO, y: TARGETS.hdl }, { x: lastISO, y: TARGETS.hdl }];
 
     fullscreenChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: lipidEntries.map(e => formatDateWithYear(e.date)),
             datasets: [
                 {
                     label: 'Total Chol',
-                    data: lipidEntries.map(e => e.totalChol || null),
+                    data: lipidEntries.map(e => ({ x: e.date, y: e.totalChol ?? null })),
                     borderColor: '#FF9500',
                     backgroundColor: 'transparent',
                     tension: 0.3,
@@ -900,7 +1167,7 @@ function renderFullscreenLipidChart(ctx) {
                 },
                 {
                     label: 'LDL',
-                    data: lipidEntries.map(e => e.ldl || null),
+                    data: lipidEntries.map(e => ({ x: e.date, y: e.ldl ?? null })),
                     borderColor: '#FF3B30',
                     backgroundColor: 'transparent',
                     tension: 0.3,
@@ -909,7 +1176,7 @@ function renderFullscreenLipidChart(ctx) {
                 },
                 {
                     label: 'HDL',
-                    data: lipidEntries.map(e => e.hdl || null),
+                    data: lipidEntries.map(e => ({ x: e.date, y: e.hdl ?? null })),
                     borderColor: '#34C759',
                     backgroundColor: 'transparent',
                     tension: 0.3,
@@ -976,13 +1243,17 @@ function renderFullscreenLipidChart(ctx) {
                         onZoom: () => { console.log('Zooming'); }
                     },
                     limits: {
-                        x: { min: 0, max: lipidEntries.length - 1, minRange: 3 }
+                        x: { min: span.min, max: span.max, minRange: 3 * 86400000 }
                     }
                 }
             },
             scales: {
                 x: {
+                    type: 'time',
+                    time: { tooltipFormat: 'MMM d, yyyy', displayFormats: TIME_DISPLAY_FORMATS },
                     display: true,
+                    min: windowBounds.min,
+                    max: windowBounds.max,
                     ticks: {
                         maxTicksLimit: 8,
                         font: { size: 11 }
