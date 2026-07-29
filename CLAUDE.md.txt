@@ -5,6 +5,7 @@ The app tracks health metrics (weight, waist, blood pressure, lipid panels, etc.
 # Tech Stack
 - Vanilla HTML/CSS/JS (no framework)
 - Chart.js for visualizations
+- chartjs-adapter-date-fns for the time-based x-axis on all charts
 - Hammer.js + chartjs-plugin-zoom for touch pan/zoom on charts
 - LocalStorage for data persistence
 - GitHub Pages for hosting
@@ -34,13 +35,27 @@ Four bottom nav items with simple SVG icons:
 3. Data (horizontal lines icon) - full data table with horizontal scroll
 4. Settings (gear icon) - import/export, field toggles
 
+# Entry Form (Add tab)
+- "Save" button is top-right in the header (next to the "New Entry" title), not at the bottom
+- Fields are grouped under section headings:
+  - Date (top, no heading; required)
+  - DAILY: Alcoholic Drinks - +/- counter (increment per drink, decrement to correct overclicks, floored at 0)
+  - WEEKLY: Weight, Waist Circumference, Blood Pressure
+  - Lipid Panel: Total Cholesterol, HDL, LDL, Non-HDL, Triglycerides, ApoB
+  - BMI (manual entry)
+
 # Charts
-- Dashboard shows preview charts (last 90 entries for weight)
+- Dashboard shows preview charts for the trailing 3 months (default window)
+- Three dashboard charts, top to bottom: Weight & Waist Trend, Alcohol Consumption, Lipid Panel
+- All charts use a real time-based x-axis (Chart.js 'time' scale via chartjs-adapter-date-fns),
+  so gaps between entries are spaced by actual dates and do not get squished together
+- Alcohol Consumption is a line chart with true discontinuities: days with no entry render as
+  blank breaks in the line, while a recorded 0 shows as a point on the zero baseline
 - Tap chart to open fullscreen view with:
   - Full historical data
-  - Pan (1-finger drag) and pinch-to-zoom
-  - Reset button to restore default view
-- X-axis labels include year (e.g., "Jan 15, '25") for clarity across year boundaries
+  - Pan (1-finger drag) and pinch-to-zoom; default view is the trailing 3 months
+  - Reset button to restore the default view
+  - Alcohol fullscreen adds a 7-day trailing-average line
 - Weight & Waist chart: dual y-axis (Weight lbs on left, Waist inches on right)
 
 # Target Lines (fullscreen charts only)
@@ -58,6 +73,7 @@ Four bottom nav items with simple SVG icons:
 
 # Data Fields
 - Date (required)
+- Alcoholic Drinks (Daily; whole-number count via +/- counter)
 - Weight (lbs)
 - Waist Circumference (inches)
 - Blood Pressure (systolic/diastolic)
@@ -68,6 +84,7 @@ Four bottom nav items with simple SVG icons:
 - Triglycerides (mg/dL)
 - BMI (manual entry)
 - ApoB (mg/dL)
+- CSV import/export includes an "Alcohol" column (older exports without it import fine; alcohol stays empty)
 
 # Development Notes
 - Hammer.js is required for touch gestures in chartjs-plugin-zoom

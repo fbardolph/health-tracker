@@ -76,6 +76,22 @@ header h1 {
     padding: 8px;
 }
 
+.btn-save-top {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 16px;
+    white-space: nowrap;
+}
+
+.btn-save-top:active {
+    background: var(--primary-dark);
+}
+
 /* Main Content */
 main {
     padding: 16px;
@@ -230,6 +246,10 @@ main {
     display: none;
 }
 
+.form-section.hidden {
+    display: none;
+}
+
 .form-group label {
     display: block;
     font-size: 0.875rem;
@@ -283,6 +303,44 @@ main {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 16px;
+}
+
+/* Counter / stepper */
+.counter {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.counter-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 1px solid var(--primary);
+    background: var(--card-bg);
+    color: var(--primary);
+    font-size: 1.75rem;
+    line-height: 1;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.counter-btn:active {
+    background: var(--primary);
+    color: white;
+}
+
+.counter-value {
+    font-size: 2rem;
+    font-weight: 700;
+    min-width: 48px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Buttons */
