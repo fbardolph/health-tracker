@@ -62,7 +62,81 @@ function loadData() {
 
 function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    scheduleBackup();
 }
+
+// ---- Cloud backup (Mac mini via Tailscale) ----
+const BACKUP_URL = 'http://100.111.218.105:8778';
+const BACKUP_FLAG_KEY = 'healthTracker_lastBackup';
+
+let backupTimer = null;
+function scheduleBackup() {
+    // Debounce: back up at most once every 30s of activity
+    clearTimeout(backupTimer);
+    backupTimer = setTimeout(() => backupNow(false), 2000);
+}
+
+async function backupNow(manual) {
+    const payload = {
+        app: 'health-tracker',
+        version: 1,
+        saved_at_client: new Date().toISOString(),
+        entries: entries,
+        settings: settings
+    };
+    try {
+        const res = await fetch(BACKUP_URL + '/api/backup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+            localStorage.setItem(BACKUP_FLAG_KEY, new Date().toISOString());
+            if (manual) showToast('Backed up (' + data.entries + ' entries)');
+            updateBackupStatus();
+        } else if (manual) {
+            showToast('Backup failed: ' + (data.error || 'unknown'));
+        }
+    } catch (err) {
+        if (manual) showToast('Mac mini unreachable');
+        // Silent failure on auto-backup; local data is untouched.
+    }
+}
+
+function updateBackupStatus() {
+    const el = document.getElementById('backup-status');
+    if (!el) return;
+    const last = localStorage.getItem(BACKUP_FLAG_KEY);
+    if (last) {
+        const d = new Date(last);
+        el.textContent = 'Last backup: ' + d.toLocaleDateString() + ' ' +
+            d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    } else {
+        el.textContent = 'No backup yet — tap "Back Up Now" once on Tailscale.';
+    }
+}
+
+async function restoreFromBackup() {
+    if (!confirm('Replace all local data with the latest backup from your Mac mini?')) return;
+    try {
+        const res = await fetch(BACKUP_URL + '/api/latest');
+        if (!res.ok) { showToast('No backup found'); return; }
+        const data = await res.json();
+        if (!Array.isArray(data.entries)) { showToast('Backup file invalid'); return; }
+        entries = data.entries;
+        if (data.settings && typeof data.settings === 'object') {
+            settings = Object.assign(settings, data.settings);
+            saveSettings();
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        showToast('Restored ' + entries.length + ' entries');
+        showView('dashboard');
+    } catch (err) {
+        showToast('Mac mini unreachable');
+    }
+}
+// ---- end cloud backup ----
 
 function loadSettings() {
     const stored = localStorage.getItem(SETTINGS_KEY);
@@ -97,6 +171,7 @@ function showView(viewName) {
         renderDataTable();
     } else if (viewName === 'settings') {
         updateEntryCount();
+        updateBackupStatus();
     }
 }
 

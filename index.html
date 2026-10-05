@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Health Tracker</title>
-    <link rel="stylesheet" href="css/styles.css?v=6">
+    <link rel="stylesheet" href="css/styles.css?v=7">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
@@ -197,8 +197,21 @@
             </section>
 
             <section class="settings-section">
+                <h2>Cloud Backup</h2>
+                <p class="hint" id="backup-status">Checking backup status…</p>
+                <div class="settings-item">
+                    <button class="btn-secondary" onclick="backupNow(true)">Back Up Now</button>
+                    <p class="hint">Sends a snapshot to your Mac mini (needs Tailscale)</p>
+                </div>
+                <div class="settings-item">
+                    <button class="btn-secondary" onclick="restoreFromBackup()">Restore Latest Backup</button>
+                    <p class="hint">Replaces local data with the most recent snapshot</p>
+                </div>
+            </section>
+
+            <section class="settings-section">
                 <h2>About</h2>
-                <p class="hint">Data is stored locally in your browser. Export regularly to back up.</p>
+                <p class="hint">Data is stored locally in your browser. Auto-backs up to your Mac mini when reachable; export CSV regularly as a second copy.</p>
                 <p class="hint" id="entry-count"></p>
             </section>
         </main>
@@ -285,6 +298,6 @@
         </button>
     </nav>
 
-    <script src="js/app.js?v=7"></script>
+    <script src="js/app.js?v=8"></script>
 </body>
 </html>
