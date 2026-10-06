@@ -66,7 +66,7 @@ function saveData() {
 }
 
 // ---- Cloud backup (Mac mini via Tailscale) ----
-const BACKUP_URL = 'http://100.111.218.105:8778';
+const BACKUP_URL = 'https://fraziers-mac-mini.taileb0b10.ts.net';
 const BACKUP_FLAG_KEY = 'healthTracker_lastBackup';
 
 let backupTimer = null;
